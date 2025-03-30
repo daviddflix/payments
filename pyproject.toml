@@ -21,6 +21,7 @@ dependencies = [
     "python-multipart==0.0.9",
     "pytest==8.0.0",
     "httpx==0.26.0",
+    "pydantic-settings==2.1.0"
 ]
 
 [tool.setuptools.packages.find]

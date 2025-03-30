@@ -31,7 +31,7 @@ payment-gateway/
 │   └── services/       # Application services
 ├── tests/              # Test files
 ├── alembic/            # Database migrations
-├── requirements.txt    # Project dependencies
+├── pyproject.toml      # Project configuration and dependencies
 ├── Dockerfile         # Docker configuration
 ├── docker-compose.yml # Docker Compose configuration
 ├── .env.example       # Environment variables template
@@ -50,7 +50,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 2. Install dependencies:
 ```bash
-pip install -r requirements.txt
+pip install .
 ```
 
 3. Set up environment variables:
