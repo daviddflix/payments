@@ -1,75 +1,79 @@
+"""
+Blockchain service for interacting with blockchain data through BlockCypher API.
+
+This module provides access to blockchain-specific features like blocks and network information.
+Use specialized manager classes for transactions, wallets, and other features.
+"""
+
 from typing import Dict, Any, Optional, List
 import blockcypher
 import os
-from app.infrastructure.providers.blockcypher.common.types import (
-    CoinSymbol,
-    Address, 
-    TransactionHash,
-    TransactionInfo,
-    TransactionStatus,
-    AddressInfo,
-    WalletInfo
-)
+import warnings
 
-class BlockchainService:
+from app.infrastructure.providers.blockcypher.common.base import BlockCypherProvider
+from app.infrastructure.providers.blockcypher.common.types import CoinSymbol
+from app.infrastructure.providers.blockcypher.wallets.manager import WalletManager
+
+class BlockchainService(BlockCypherProvider):
     """
     High-level service for interacting with blockchain data through BlockCypher API.
     
-    This class provides access to blockchain data like blocks, transactions,
-    and network information, without handling wallets or transactions directly.
+    This class provides access to blockchain data like blocks and network information.
+    
+    Note:
+        - For transaction operations, use TransactionManager instead.
+        - For wallet operations, use WalletManager instead.
+        - For forwarding and webhook operations, use ForwardingManager instead.
     """
     
-    def __init__(self, coin_symbol: CoinSymbol = 'btc-testnet'):
-        self.api_token = os.getenv("BLOCKCYPHER_API_TOKEN")
-        self.coin_symbol = coin_symbol
-
-    def get_satoshi_multiplier(self) -> int:
-        return 100000000  # 1 BTC = 100,000,000 satoshis
+    def __init__(self, coin_symbol: CoinSymbol = 'btc-testnet', api_token: Optional[str] = None):
+        """
+        Initialize the blockchain service.
+        
+        Args:
+            coin_symbol: Cryptocurrency network symbol (default: btc-testnet)
+            api_token: BlockCypher API token (default: None, reads from environment)
+        """
+        super().__init__(coin_symbol=coin_symbol, api_token=api_token)
+        self._wallet_manager = None
     
-    def get_address_balance(self, address: str) -> float:
-        try:
-            address_info = blockcypher.get_address_details(
-                address,
-                coin_symbol=self.coin_symbol
+    @property
+    def wallet_manager(self):
+        """
+        Get or create a wallet manager instance.
+        
+        Returns:
+            WalletManager instance
+        """
+        if self._wallet_manager is None:
+            self._wallet_manager = WalletManager(
+                coin_symbol=self.coin_symbol,
+                api_token=self.api_token
             )
-            return float(address_info.get("balance", 0)) / self.get_satoshi_multiplier()
-        except Exception as e:
-            raise Exception(f"Failed to get address balance: {str(e)}")
-    
-    def get_address_details(self, address: str) -> AddressInfo:
-        try:
-            details = blockcypher.get_address_details(
-                address,
-                coin_symbol=self.coin_symbol
-            )
-            return {
-                "address": address,
-                "balance": details.get("balance", 0),
-                "total_received": details.get("total_received", 0),
-                "total_sent": details.get("total_sent", 0),
-                "n_tx": details.get("n_tx", 0),
-                "unconfirmed_balance": details.get("unconfirmed_balance", 0),
-                "final_balance": details.get("final_balance", 0)
-            }
-        except Exception as e:
-            raise Exception(f"Failed to get address details: {str(e)}")
-    
-    def get_transaction_details(self, tx_hash: str) -> Dict[str, Any]:
-        try:
-            return blockcypher.get_transaction_details(
-                tx_hash,
-                coin_symbol=self.coin_symbol
-            )
-        except Exception as e:
-            raise Exception(f"Failed to get transaction details: {str(e)}")
+        return self._wallet_manager
     
     def get_latest_block_height(self) -> int:
+        """
+        Get the latest block height for this blockchain.
+        
+        Returns:
+            Block height as an integer
+        """
         try:
             return blockcypher.get_latest_block_height(coin_symbol=self.coin_symbol)
         except Exception as e:
             raise Exception(f"Failed to get latest block height: {str(e)}")
     
     def get_block_details(self, block_height: int) -> Dict[str, Any]:
+        """
+        Get detailed information about a specific block.
+        
+        Args:
+            block_height: The height of the block to retrieve
+            
+        Returns:
+            Dictionary with block details
+        """
         try:
             details = blockcypher.get_block_details(block_height, coin_symbol=self.coin_symbol)
             return {
@@ -89,6 +93,15 @@ class BlockchainService:
             raise Exception(f"Failed to get block details: {str(e)}")
     
     def get_block_overview(self, block_height: int) -> Dict[str, Any]:
+        """
+        Get a summarized overview of a specific block.
+        
+        Args:
+            block_height: The height of the block to retrieve
+            
+        Returns:
+            Dictionary with block overview
+        """
         try:
             return blockcypher.get_block_overview(block_height, coin_symbol=self.coin_symbol)
         except Exception as e:
@@ -122,22 +135,45 @@ class BlockchainService:
             }
         except Exception as e:
             raise Exception(f"Failed to get fee estimates: {str(e)}")
-
-# Example usage
-if __name__ == "__main__":
-    # Initialize the provider with your API token
-    provider = BlockchainService(api_token="your_api_token_here", use_testnet=True)
     
-    # Get the latest block height
-    latest_block = provider.get_latest_block_height()
-    print(f"Latest block height: {latest_block}")
+    def get_address_balance(self, address: str) -> float:
+        """
+        Get the balance of an address.
+        
+        Deprecated:
+            Use WalletManager.get_wallet_balance() instead.
+            
+        Args:
+            address: The address to check
+            
+        Returns:
+            Balance in the native coin unit
+        """
+        warnings.warn(
+            "get_address_balance() is deprecated. Use WalletManager.get_wallet_balance() instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return self.wallet_manager.get_wallet_balance(address)
     
-    # Get network information
-    print(f"Network: {provider.get_network_name()} ({provider.get_network_symbol()})")
-    
-    # Example: Get address details (replace with a valid Bitcoin address)
-    # address = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
-    # details = provider.get_address_details(address)
-    # print(f"Address details: {details}")
+    def get_address_details(self, address: str) -> Dict[str, Any]:
+        """
+        Get details about an address.
+        
+        Deprecated:
+            Use WalletManager.get_wallet_details() instead.
+            
+        Args:
+            address: The address to get details for
+            
+        Returns:
+            Dictionary with address details
+        """
+        warnings.warn(
+            "get_address_details() is deprecated. Use WalletManager.get_wallet_details() instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return self.wallet_manager.get_wallet_details(address)
 
 

@@ -18,7 +18,6 @@ from app.infrastructure.providers.blockcypher.common.base import BlockCypherProv
 from app.infrastructure.providers.blockcypher.wallets import WalletManager
 from app.infrastructure.providers.blockcypher.transactions import TransactionManager, TransactionValidator
 from app.infrastructure.providers.blockcypher.forwarding import ForwardingManager
-from app.infrastructure.providers.blockcypher.common.factory import BlockCypherFactory
 from app.infrastructure.providers.blockcypher.blockchain import BlockchainService
 from app.infrastructure.providers.blockcypher.webhooks import BlockcypherWebhookHandler, simulate_webhook
 
@@ -28,7 +27,6 @@ __all__ = [
     'TransactionManager',
     'TransactionValidator',
     'ForwardingManager',
-    'BlockCypherFactory',
     'BlockchainService',
     'BlockcypherWebhookHandler',
     'simulate_webhook',

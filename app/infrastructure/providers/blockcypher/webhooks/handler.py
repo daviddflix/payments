@@ -6,11 +6,39 @@ including transaction notifications and confirmations.
 """
 
 import json
+import hmac
+import hashlib
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 # In a real application, you would use a database instead of this in-memory storage
 transaction_db = {}
+
+
+def verify_webhook_signature(request_data: bytes, signature: str, webhook_secret: str) -> bool:
+    """
+    Verify the signature of a BlockCypher webhook.
+    
+    Args:
+        request_data: Raw request data from the webhook
+        signature: Signature provided in the X-Signature header
+        webhook_secret: Secret used to generate the signature
+        
+    Returns:
+        True if the signature is valid, False otherwise
+    """
+    if not webhook_secret or not signature:
+        return False
+        
+    # Calculate expected signature
+    expected_signature = hmac.new(
+        webhook_secret.encode('utf-8'),
+        request_data,
+        hashlib.sha256
+    ).hexdigest()
+    
+    # Compare signatures using constant-time comparison to prevent timing attacks
+    return hmac.compare_digest(expected_signature, signature)
 
 
 class BlockcypherWebhookHandler:
@@ -253,17 +281,8 @@ def simulate_webhook(event_type: str = 'unconfirmed-tx',
             "hash": tx_hash
         }
     else:
-        return {"error": "Unsupported event type for simulation"}
+        return {"error": f"Unsupported event type: {event_type}"}
     
     # Process the simulated webhook
-    simulated_bytes = json.dumps(simulated_data).encode('utf-8')
-    webhook_response = BlockcypherWebhookHandler.handle_payment_webhook(
-        simulated_bytes, 
-        simulated_data
-    )
-    
-    # Return both the simulated request and the handler's response
-    return {
-        "simulated_request": simulated_data,
-        "webhook_response": webhook_response
-    } 
+    handler = BlockcypherWebhookHandler()
+    return handler.handle_payment_webhook(json.dumps(simulated_data).encode(), simulated_data) 
