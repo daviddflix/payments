@@ -21,10 +21,20 @@ dependencies = [
     "python-multipart==0.0.9",
     "pytest==8.0.0",
     "httpx==0.26.0",
-    "pydantic-settings==2.1.0"
+    "pydantic-settings==2.1.0",
+    "loguru>=0.7.3",
+    "pytest>=6.2.5",
+    "pytest-mock>=3.6.1" 
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
-namespaces = false 
+namespaces = false
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"] 

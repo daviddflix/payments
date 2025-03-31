@@ -29,6 +29,10 @@ app.add_middleware(
 # app.include_router(payments.router, prefix=settings.API_V1_STR, tags=["payments"])
 # app.include_router(wallets.router, prefix=settings.API_V1_STR, tags=["wallets"])
 
+# Import and include the versioned webhook router
+from app.api.v1 import webhook_router
+app.include_router(webhook_router, prefix=settings.API_V1_STR)
+
 @app.get("/")
 async def root():
     return {
