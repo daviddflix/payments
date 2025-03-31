@@ -1,40 +1,30 @@
 from typing import Dict, Any, Optional, List
 import blockcypher
 import os
-from .blockcypher_types import (
-    WalletInfo,
+from app.infrastructure.providers.blockcypher.common.types import (
+    CoinSymbol,
+    Address, 
+    TransactionHash,
     TransactionInfo,
     TransactionStatus,
-    BlockInfo,
     AddressInfo,
-    TokenInfo
+    WalletInfo
 )
 
-class BlockCypherProvider:
-    """Bitcoin implementation of the cryptocurrency provider."""
+class BlockchainService:
+    """
+    High-level service for interacting with blockchain data through BlockCypher API.
     
-    def __init__(self, coin_symbol: str = 'btc-testnet'):
+    This class provides access to blockchain data like blocks, transactions,
+    and network information, without handling wallets or transactions directly.
+    """
+    
+    def __init__(self, coin_symbol: CoinSymbol = 'btc-testnet'):
         self.api_token = os.getenv("BLOCKCYPHER_API_TOKEN")
         self.coin_symbol = coin_symbol
 
     def get_satoshi_multiplier(self) -> int:
         return 100000000  # 1 BTC = 100,000,000 satoshis
-    
-    def create_wallet(self, address: str) -> WalletInfo:
-        try:
-            wallet = blockcypher.create_wallet_from_address(
-                address=address,
-                api_key=self.api_token,
-                coin_symbol=self.coin_symbol
-            )
-            return {
-                "address": address,
-                "private_key": wallet.get("private"),
-                "public_key": wallet.get("public"),
-                "wif": wallet.get("wif")
-            }
-        except Exception as e:
-            raise Exception(f"Failed to create Bitcoin wallet: {str(e)}")
     
     def get_address_balance(self, address: str) -> float:
         try:
@@ -44,7 +34,7 @@ class BlockCypherProvider:
             )
             return float(address_info.get("balance", 0)) / self.get_satoshi_multiplier()
         except Exception as e:
-            raise Exception(f"Failed to get Bitcoin address balance: {str(e)}")
+            raise Exception(f"Failed to get address balance: {str(e)}")
     
     def get_address_details(self, address: str) -> AddressInfo:
         try:
@@ -62,65 +52,7 @@ class BlockCypherProvider:
                 "final_balance": details.get("final_balance", 0)
             }
         except Exception as e:
-            raise Exception(f"Failed to get Bitcoin address details: {str(e)}")
-    
-    def get_total_balance(self, address: str) -> int:
-        try:
-            address_info = blockcypher.get_address_details(
-                address,
-                coin_symbol=self.coin_symbol
-            )
-            return address_info.get("balance", 0)
-        except Exception as e:
-            raise Exception(f"Failed to get Bitcoin total balance: {str(e)}")
-    
-    def create_transaction(
-        self,
-        from_address: str,
-        to_address: str,
-        amount: float,
-        private_key: str
-    ) -> TransactionInfo:
-        try:
-            satoshis = int(amount * self.get_satoshi_multiplier())
-            
-            tx = blockcypher.create_unsigned_tx(
-                inputs=[{"address": from_address}],
-                outputs=[{"address": to_address, "value": satoshis}],
-                coin_symbol=self.coin_symbol
-            )
-            
-            signed_tx = blockcypher.sign_transaction(
-                tx,
-                private_key,
-                coin_symbol=self.coin_symbol
-            )
-            
-            result = blockcypher.push_unsigned_tx(
-                signed_tx,
-                coin_symbol=self.coin_symbol
-            )
-            
-            return {
-                "transaction_hash": result.get("tx", {}).get("hash"),
-                "status": "success"
-            }
-        except Exception as e:
-            raise Exception(f"Failed to create Bitcoin transaction: {str(e)}")
-    
-    def get_transaction_status(self, tx_hash: str) -> TransactionStatus:
-        try:
-            tx = blockcypher.get_transaction_details(
-                tx_hash,
-                coin_symbol=self.coin_symbol
-            )
-            return {
-                "hash": tx_hash,
-                "confirmations": tx.get("confirmations", 0),
-                "status": "confirmed" if tx.get("confirmations", 0) > 0 else "pending"
-            }
-        except Exception as e:
-            raise Exception(f"Failed to get Bitcoin transaction status: {str(e)}")
+            raise Exception(f"Failed to get address details: {str(e)}")
     
     def get_transaction_details(self, tx_hash: str) -> Dict[str, Any]:
         try:
@@ -129,15 +61,15 @@ class BlockCypherProvider:
                 coin_symbol=self.coin_symbol
             )
         except Exception as e:
-            raise Exception(f"Failed to get Bitcoin transaction details: {str(e)}")
+            raise Exception(f"Failed to get transaction details: {str(e)}")
     
     def get_latest_block_height(self) -> int:
         try:
             return blockcypher.get_latest_block_height(coin_symbol=self.coin_symbol)
         except Exception as e:
-            raise Exception(f"Failed to get Bitcoin latest block height: {str(e)}")
+            raise Exception(f"Failed to get latest block height: {str(e)}")
     
-    def get_block_details(self, block_height: int) -> BlockInfo:
+    def get_block_details(self, block_height: int) -> Dict[str, Any]:
         try:
             details = blockcypher.get_block_details(block_height, coin_symbol=self.coin_symbol)
             return {
@@ -154,46 +86,47 @@ class BlockCypherProvider:
                 "txids": details.get("txids", [])
             }
         except Exception as e:
-            raise Exception(f"Failed to get Bitcoin block details: {str(e)}")
+            raise Exception(f"Failed to get block details: {str(e)}")
     
     def get_block_overview(self, block_height: int) -> Dict[str, Any]:
         try:
             return blockcypher.get_block_overview(block_height, coin_symbol=self.coin_symbol)
         except Exception as e:
-            raise Exception(f"Failed to get Bitcoin block overview: {str(e)}")
+            raise Exception(f"Failed to get block overview: {str(e)}")
     
-    def get_token_balance(self, address: str, token_address: str) -> float:
-        """Bitcoin doesn't support tokens natively, so this is not implemented."""
-        raise NotImplementedError("Bitcoin does not support tokens natively")
+    def get_network_info(self) -> Dict[str, Any]:
+        """
+        Get information about the current network.
+        
+        Returns:
+            Dictionary with network information
+        """
+        try:
+            return blockcypher.get_blockchain_overview(coin_symbol=self.coin_symbol)
+        except Exception as e:
+            raise Exception(f"Failed to get network information: {str(e)}")
 
-    def get_token_details(self, token_address: str) -> TokenInfo:
-        """Bitcoin doesn't support tokens natively, so this is not implemented."""
-        raise NotImplementedError("Bitcoin does not support tokens natively")
-
-    def create_token_transaction(
-        self,
-        from_address: str,
-        to_address: str,
-        token_address: str,
-        amount: float,
-        private_key: str
-    ) -> TransactionInfo:
-        """Bitcoin doesn't support tokens natively, so this is not implemented."""
-        raise NotImplementedError("Bitcoin does not support tokens natively")
-
-    def get_token_transactions(
-        self,
-        address: str,
-        token_address: str,
-        limit: int = 50
-    ) -> List[TransactionInfo]:
-        """Bitcoin doesn't support tokens natively, so this is not implemented."""
-        raise NotImplementedError("Bitcoin does not support tokens natively")
+    def get_fee_estimates(self) -> Dict[str, int]:
+        """
+        Get fee estimates for different priority levels.
+        
+        Returns:
+            Dictionary with fee estimates in satoshis per kilobyte
+        """
+        try:
+            info = blockcypher.get_blockchain_overview(coin_symbol=self.coin_symbol)
+            return {
+                "high_fee_per_kb": info.get("high_fee_per_kb", 0),
+                "medium_fee_per_kb": info.get("medium_fee_per_kb", 0),
+                "low_fee_per_kb": info.get("low_fee_per_kb", 0)
+            }
+        except Exception as e:
+            raise Exception(f"Failed to get fee estimates: {str(e)}")
 
 # Example usage
 if __name__ == "__main__":
     # Initialize the provider with your API token
-    provider = BlockCypherProvider(api_token="your_api_token_here", use_testnet=True)
+    provider = BlockchainService(api_token="your_api_token_here", use_testnet=True)
     
     # Get the latest block height
     latest_block = provider.get_latest_block_height()

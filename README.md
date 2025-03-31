@@ -284,4 +284,8 @@ docker-compose exec web alembic upgrade head
 
 ## License
 
-MIT
+Proprietary. All rights reserved.
+
+This software is the confidential and proprietary information of the copyright holder.
+Unauthorized copying, transferring, or reproduction of this software, in any medium, 
+is strictly prohibited.
